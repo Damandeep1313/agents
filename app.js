@@ -38,8 +38,8 @@ const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 
 // Determine Netlify endpoint (existing site vs. new site)
 const netlifyEndpoint = NETLIFY_SITE_ID
-  ? `https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys`
-  : "https://api.netlify.com/api/v1/sites";
+  ? `https://api.netlify.com/api/v1/sites`
+  : "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys";//https://api.netlify.com/api/v1/sites
 
 // 2️⃣ Set up Express app
 const app = express();

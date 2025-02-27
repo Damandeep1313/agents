@@ -1068,7 +1068,7 @@ cloudinary.config({
   
   // Default testimonial images if none provided
   const DEFAULT_T1 =
-    "https://media.istockphoto.com/id/1329039896/photo/young-doctor-asking-senior-impaired-male-patient-in-wheelchair-to-sign-insurance-policy-at.jpg";
+    "https://media.istockphoto.com/id/1329039896/photo/young-doctor-asking-senior-impaired-male-Client-in-wheelchair-to-sign-insurance-policy-at.jpg";
   const DEFAULT_T2 = "https://picsum.photos/80/80?random=203";
   const DEFAULT_T3 = "https://picsum.photos/80/80?random=201";
   
@@ -1326,7 +1326,7 @@ cloudinary.config({
       <div class="col-md-6" data-aos="fade-right">
         <h2>About  ${doctorDetails.name}</h2>
         <p class="lead">
-          Dedicated to offering the highest level of personalized care for every patient.
+          Dedicated to offering the highest level of personalized care for every Client.
         </p>
 
         <!-- Specializations -->
@@ -1369,7 +1369,7 @@ cloudinary.config({
   <section class="cta-section" data-aos="fade-up">
     <div class="container">
       <h2>Experience Our World-Class Services</h2>
-      <p class="mb-4">Book an appointment and discover the difference of dedicated, patient-centered care.</p>
+      <p class="mb-4">Book an appointment and discover the difference of dedicated, Client-centered care.</p>
       <button class="btn-cta" onclick="document.getElementById('appointment').scrollIntoView({ behavior: 'smooth' });">
         Book Now
       </button>
@@ -1432,23 +1432,23 @@ cloudinary.config({
 
   <!-- Testimonial Carousel -->
   <section class="testimonial-carousel container py-5" data-aos="fade-up">
-    <h2 class="text-center mb-4">What Our Patients Say</h2>
+    <h2 class="text-center mb-4">What Our Clients Say</h2>
     <div id="carouselExample" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-inner">
         <!-- Slide 1 -->
         <div class="carousel-item active">
           <div class="text-center">
-            <img src="${t1}" alt="Patient 1">
+            <img src="${t1}" alt="Client 1">
             <blockquote class="blockquote mt-3">
               " ${doctorDetails.name} is simply the best. I felt cared for from the moment I walked in!"
             </blockquote>
-            <p class="fw-bold">- Happy Patient</p>
+            <p class="fw-bold">- Happy Client</p>
           </div>
         </div>
         <!-- Slide 2 -->
         <div class="carousel-item">
           <div class="text-center">
-            <img src="${t2}" alt="Patient 2">
+            <img src="${t2}" alt="Client 2">
             <blockquote class="blockquote mt-3">
               "I wouldn't trust anyone else with my family's needs."
             </blockquote>
@@ -1458,11 +1458,11 @@ cloudinary.config({
         <!-- Slide 3 -->
         <div class="carousel-item">
           <div class="text-center">
-            <img src="${t3}" alt="Patient 3">
+            <img src="${t3}" alt="Client 3">
             <blockquote class="blockquote mt-3">
               "Professional, caring, and highly experienced. 10/10 recommend!"
             </blockquote>
-            <p class="fw-bold">- Grateful Patient</p>
+            <p class="fw-bold">- Grateful Client</p>
           </div>
         </div>
       </div>

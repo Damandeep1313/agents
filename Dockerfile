@@ -23,4 +23,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "app.js"]
+CMD ["node", "app copy.js"]

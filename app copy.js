@@ -1563,117 +1563,117 @@ cloudinary.config({
   //    Now reads netlify site ID from request headers too
   // ----------------------------------------------------
   app.post("/nl-generate-landing-page", async (req, res) => {
-    try {
-      const { textPrompt } = req.body;
-      if (!textPrompt) {
-        return res.status(400).json({ error: 'Missing "textPrompt" field' });
-      }
-  
-      // Extract Netlify auth token and site ID from the request headers
-      const netlifyAuthToken = req.headers["netlify-auth-token"];
-      const netlifySiteId    = req.headers["netlify-site-id"];
-  
-      if (!netlifyAuthToken) {
-        return res.status(400).json({ error: "Missing 'netlify-auth-token' header" });
-      }
-      if (!netlifySiteId) {
-        return res.status(400).json({ error: "Missing 'netlify-site-id' header" });
-      }
-  
-      // 1) System instructions for the LLM about how to parse
-      const systemMessage = `You are a helpful assistant that converts unstructured text into a JSON object 
-  with the following structure exactly:
-  
-  {
-    "websiteNiche": string, 
-    "doctorDetails": {
-      "name": string,
-      "specialization": [array of strings],
-      "achievements": [array of strings],
-      "description": string
-    },
-    "pageLinks": [array of strings],
-    "images": [array of strings],
-    "testimonialImages": [array of strings],
-    "faqs": [ { "question": string, "answer": string }, ... ]
-  }
-  
-  Return ONLY valid JSON, with NO extra text or explanation.
-  If any field is missing from user prompt, guess or fill placeholders.
-  ALWAYS respond with valid JSON. No code blocks, no extra text.
-  `;
-  
-      // 2) Build user message
-      const userMessage = `User prompt:\n${textPrompt}\n\nPlease extract into the required JSON.`;
-  
-      // 3) Call OpenAI
-      console.log("/nl-generate-landing-page: calling openai createChatCompletion...");
-      const chatResponse = await openai.createChatCompletion({
-        model: "gpt-3.5-turbo",
+  try {
+    const { textPrompt } = req.body;
+    if (!textPrompt) {
+      return res.status(400).json({ error: 'Missing "textPrompt" field' });
+    }
+
+    const netlifyAuthToken = req.headers["netlify-auth-token"];
+    const netlifySiteId = req.headers["netlify-site-id"];
+
+    if (!netlifyAuthToken) {
+      return res.status(400).json({ error: "Missing 'netlify-auth-token' header" });
+    }
+    if (!netlifySiteId) {
+      return res.status(400).json({ error: "Missing 'netlify-site-id' header" });
+    }
+
+    const systemMessage = `You are a helpful assistant that converts unstructured text into a JSON object 
+with the following structure exactly:
+
+{
+  "websiteNiche": string, 
+  "doctorDetails": {
+    "name": string,
+    "specialization": [array of strings],
+    "achievements": [array of strings],
+    "description": string
+  },
+  "pageLinks": [array of strings],
+  "images": [array of strings],
+  "testimonialImages": [array of strings],
+  "faqs": [ { "question": string, "answer": string }, ... ]
+}
+
+Return ONLY valid JSON, with NO extra text or explanation.
+If any field is missing from user prompt, guess or fill placeholders.
+ALWAYS respond with valid JSON. No code blocks, no extra text.
+`;
+
+    const userMessage = `User prompt:\n${textPrompt}\n\nPlease extract into the required JSON.`;
+
+    // ✅ Azure OpenAI call using Axios
+    console.log("/nl-generate-landing-page: calling Azure OpenAI...");
+
+    const azureResponse = await axios.post(
+      process.env.AZURE_OPENAI_ENDPOINT_O3,
+      {
         messages: [
           { role: "system", content: systemMessage },
           { role: "user", content: userMessage },
-        ],
-        temperature: 0,
-      });
-  
-      const rawAssistantReply = chatResponse.data.choices[0].message.content;
-      console.log("/nl-generate-landing-page: rawAssistantReply =\n", rawAssistantReply);
-  
-      // 4) Attempt to parse JSON
-      let parsed;
-      try {
-        parsed = JSON.parse(rawAssistantReply);
-      } catch (e) {
-        console.error("OpenAI JSON parse error:", e);
-        return res
-          .status(500)
-          .send("LLM did not return valid JSON:\n" + rawAssistantReply);
+        ]
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.AZURE_OPENAI_API_KEY,
+        },
       }
-  
-      // 4.5) For each image in parsed.images + parsed.testimonialImages => compress+upload
-      if (Array.isArray(parsed.images)) {
-        for (let i = 0; i < parsed.images.length; i++) {
-          const originalUrl = parsed.images[i];
-          try {
-            const newUrl = await fetchCompressUpload(originalUrl);
-            parsed.images[i] = newUrl; // replace with new Cloudinary URL
-          } catch (err) {
-            console.log("Error compressing image:", originalUrl, err.message);
-            // fallback to original
-          }
-        }
-      }
-      if (Array.isArray(parsed.testimonialImages)) {
-        for (let j = 0; j < parsed.testimonialImages.length; j++) {
-          const originalTUrl = parsed.testimonialImages[j];
-          try {
-            const newTUrl = await fetchCompressUpload(originalTUrl);
-            parsed.testimonialImages[j] = newTUrl;
-          } catch (err) {
-            console.log("Error compressing testimonial image:", originalTUrl, err.message);
-            // fallback to original
-          }
-        }
-      }
-  
-      // 5) Generate HTML from that JSON
-      const finalHtml = generateLandingPageHtml(parsed);
-  
-      // 6) Deploy the HTML to Netlify (passing both token + site ID)
-      const netlifyUrl = await deployHtmlToNetlify(finalHtml, netlifyAuthToken, netlifySiteId);
-  
-      // 7) Return the Netlify URL
-      return res.status(200).json({
-        success: true,
-        netlifyUrl,
-        note: "Images compressed & uploaded to Cloudinary, then deployed to Netlify (token + site ID from headers).",
-      });
-    } catch (err) {
-      console.error("Error in /nl-generate-landing-page:", err);
-      return res.status(500).json({ error: "Error processing natural language prompt" });
+    );
+
+    const rawAssistantReply = azureResponse.data.choices[0].message.content;
+    console.log("/nl-generate-landing-page: rawAssistantReply =\n", rawAssistantReply);
+
+    // Parse response
+    let parsed;
+    try {
+      parsed = JSON.parse(rawAssistantReply);
+    } catch (e) {
+      console.error("Azure JSON parse error:", e);
+      return res
+        .status(500)
+        .send("Azure response was not valid JSON:\n" + rawAssistantReply);
     }
-  });
+
+    // Compress & upload images
+    if (Array.isArray(parsed.images)) {
+      for (let i = 0; i < parsed.images.length; i++) {
+        const originalUrl = parsed.images[i];
+        try {
+          const newUrl = await fetchCompressUpload(originalUrl);
+          parsed.images[i] = newUrl;
+        } catch (err) {
+          console.log("Error compressing image:", originalUrl, err.message);
+        }
+      }
+    }
+    if (Array.isArray(parsed.testimonialImages)) {
+      for (let j = 0; j < parsed.testimonialImages.length; j++) {
+        const originalTUrl = parsed.testimonialImages[j];
+        try {
+          const newTUrl = await fetchCompressUpload(originalTUrl);
+          parsed.testimonialImages[j] = newTUrl;
+        } catch (err) {
+          console.log("Error compressing testimonial image:", originalTUrl, err.message);
+        }
+      }
+    }
+
+    // Generate and deploy HTML
+    const finalHtml = generateLandingPageHtml(parsed);
+    const netlifyUrl = await deployHtmlToNetlify(finalHtml, netlifyAuthToken, netlifySiteId);
+
+    return res.status(200).json({
+      success: true,
+      netlifyUrl,
+      note: "Images compressed & uploaded to Cloudinary, then deployed to Netlify (token + site ID from headers).",
+    });
+  } catch (err) {
+    console.error("Error in /nl-generate-landing-page:", err);
+    return res.status(500).json({ error: "Error processing natural language prompt" });
+  }
+});
 
 // 4️⃣ Start the server
 app.listen(PORT, () => {

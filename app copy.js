@@ -1499,41 +1499,44 @@ cloudinary.config({
     </div>
   </section>
 
-  <!-- Appointment Form (Scroll Target) -->
-  <section class="contact-section" id="appointment">
-    <div class="container" data-aos="fade-up">
-      <h2 class="text-center mb-5">Request an Appointment</h2>
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="card appointment-card">
-            <div class="card-body">
-              <h4 class="card-title mb-3">Please fill in your details</h4>
-              <form>
-                <div class="mb-3">
-                  <label for="name" class="form-label">Full Name</label>
-                  <input type="text" class="form-control" id="name" placeholder="Your name" required>
-                </div>
-                <div class="mb-3">
-                  <label for="email" class="form-label">Email Address</label>
-                  <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
-                </div>
-                <div class="mb-3">
-                  <label for="date" class="form-label">Preferred Date</label>
-                  <input type="date" class="form-control" id="date" required>
-                </div>
-                <div class="mb-3">
-                  <label for="notes" class="form-label">Additional Notes</label>
-                  <textarea class="form-control" id="notes" rows="3" placeholder="Any special requests or questions..."></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary px-4">Submit</button>
-              </form>
-            </div>
+     <!-- Appointment Form (Scroll Target) -->
+<section class="contact-section" id="appointment">
+  <div class="container" data-aos="fade-up">
+    <h2 class="text-center mb-5">Request an Appointment</h2>
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="card appointment-card">
+          <div class="card-body">
+            <h4 class="card-title mb-3">Please fill in your details</h4>
+            <form enctype="multipart/form-data">
+              <div class="mb-3">
+                <label for="name" class="form-label">Full Name</label>
+                <input type="text" class="form-control" id="name" placeholder="Your name" required>
+              </div>
+              <div class="mb-3">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+              </div>
+              <div class="mb-3">
+                <label for="date" class="form-label">Preferred Date</label>
+                <input type="date" class="form-control" id="date" required>
+              </div>
+              <div class="mb-3">
+                <label for="cv" class="form-label">Upload CV</label>
+                <input type="file" class="form-control" id="cv" accept=".pdf,.doc,.docx" required>
+              </div>
+              <div class="mb-3">
+                <label for="notes" class="form-label">Additional Notes</label>
+                <textarea class="form-control" id="notes" rows="3" placeholder="Any special requests or questions..."></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary px-4">Submit</button>
+            </form>
           </div>
         </div>
       </div>
     </div>
-  </section>
-
+  </div>
+</section>
   <!-- Footer -->
   <footer>
     <div class="container">

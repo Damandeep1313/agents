@@ -336,12 +336,19 @@ async function writeTweet(accessToken, tweet) {
     });
 
     const data = await response.json();
+    console.log('➡️ Tweet POST status:', response.status); // Should be 201 if successful
+    console.log('➡️ Tweet POST response data:', data);
+    console.log('🧪 Access token used:', accessToken.slice(0, 10) + '...'); // Just a preview for safety
+
     return data;
 }
 
 app.post("/post/tweet", express.json(), async (req, res) => {
   const authHeader = req.headers['authorization']; // Expect: Bearer <refresh_token>
   const { text } = req.body;
+
+  console.log('📩 Incoming tweet text:', text);
+  console.log('📩 Authorization header received:', authHeader);
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(400).json({ error: 'Missing or invalid Authorization header.' });
@@ -353,22 +360,32 @@ app.post("/post/tweet", express.json(), async (req, res) => {
   }
 
   try {
+    console.log('🔄 Refreshing token using refresh_token:', refresh_token.slice(0, 10) + '...');
+
     // Step 1: Refresh access token
     const tokenData = await getAccessTokenFromRefreshToken(refresh_token);
+    console.log('✅ Token data from refresh:', tokenData);
+
     const access_token = tokenData.access_token;
 
     if (!access_token) {
       return res.status(401).json({ error: 'Failed to refresh token.', details: tokenData });
     }
 
+    console.log('✅ Access token extracted:', access_token.slice(0, 10) + '...');
+
     // Step 2: Post tweet
     const tweetResponse = await writeTweet(access_token, text);
+    console.log('✅ Tweet response:', tweetResponse);
+
     res.json({ message: "Tweet sent via refresh token.", tweetResponse });
+
   } catch (err) {
-    console.error('Tweet via refresh token failed:', err.message);
+    console.error('❌ Tweet via refresh token failed:', err.message);
     res.status(500).json({ error: 'Tweet failed using refresh token.', details: err.message });
   }
 });
+
 
 
 //----------------------------------uniswap-------------------------------------------------//

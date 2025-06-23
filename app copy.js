@@ -339,35 +339,37 @@ async function writeTweet(accessToken, tweet) {
     return data;
 }
 
-app.post("/post/tweet", async (req, res) => {
-    console.log(req.body, "line 80");
+app.post("/post/tweet", express.json(), async (req, res) => {
+  const authHeader = req.headers['authorization']; // Expect: Bearer <refresh_token>
+  const { text } = req.body;
 
-    // Extract the access token from the Authorization header
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) {
-        return res.status(400).json({ error: 'Authorization header is missing.' });
-    }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(400).json({ error: 'Missing or invalid Authorization header.' });
+  }
 
-    // The token comes after "Bearer " in the Authorization header
-    const access_token = authHeader.split(' ')[1];
+  const refresh_token = authHeader.split(' ')[1];
+  if (!refresh_token || !text) {
+    return res.status(400).json({ error: 'Missing refresh token or tweet text.' });
+  }
+
+  try {
+    // Step 1: Refresh access token
+    const tokenData = await getAccessTokenFromRefreshToken(refresh_token);
+    const access_token = tokenData.access_token;
+
     if (!access_token) {
-        return res.status(400).json({ error: 'Access token is missing in Authorization header.' });
+      return res.status(401).json({ error: 'Failed to refresh token.', details: tokenData });
     }
 
-    // Get the tweet text from the request body
-    const { text } = req.body;
-
-    try {
-        // Call the function to post the tweet
-        const tweetResponse = await writeTweet(access_token, text);
-        console.log('Tweet response:', tweetResponse);
-
-        res.json({ message: "Tweet sent successfully." });
-    } catch (error) {
-        console.error('Error posting tweet:', error);
-        res.status(500).json({ error: 'Error posting tweet. Please try again.' });
-    }
+    // Step 2: Post tweet
+    const tweetResponse = await writeTweet(access_token, text);
+    res.json({ message: "Tweet sent via refresh token.", tweetResponse });
+  } catch (err) {
+    console.error('Tweet via refresh token failed:', err.message);
+    res.status(500).json({ error: 'Tweet failed using refresh token.', details: err.message });
+  }
 });
+
 
 //----------------------------------uniswap-------------------------------------------------//
 

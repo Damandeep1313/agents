@@ -343,6 +343,36 @@ async function writeTweet(accessToken, tweet) {
     return data;
 }
 
+async function getAccessTokenFromRefreshToken(refresh_token) {
+  const TOKEN_URL = 'https://api.twitter.com/2/oauth2/token';
+
+  const headers = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
+  };
+
+  const body = new URLSearchParams({
+    grant_type: 'refresh_token',
+    refresh_token: refresh_token,
+    client_id: CLIENT_ID
+  });
+
+  const response = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers,
+    body
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`Refresh failed: ${response.status} - ${errorData}`);
+  }
+
+  return await response.json();
+}
+
+
+
 app.post("/post/tweet", express.json(), async (req, res) => {
   const authHeader = req.headers['authorization']; // Expect: Bearer <refresh_token>
   const { text } = req.body;

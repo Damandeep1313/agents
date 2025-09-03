@@ -374,7 +374,7 @@ async function getAccessTokenFromRefreshToken(refresh_token) {
 
 
 app.post("/post/tweet", express.json(), async (req, res) => {
-  const authHeader = req.headers['authorization']; // Expect: Bearer <refresh_token>
+  const authHeader = req.headers['authorization']; // Expect: Bearer <access_token>
   const { text } = req.body;
 
   console.log('📩 Incoming tweet text:', text);
@@ -384,35 +384,23 @@ app.post("/post/tweet", express.json(), async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid Authorization header.' });
   }
 
-  const refresh_token = authHeader.split(' ')[1];
-  if (!refresh_token || !text) {
-    return res.status(400).json({ error: 'Missing refresh token or tweet text.' });
+  const access_token = authHeader.split(' ')[1];
+  if (!access_token || !text) {
+    return res.status(400).json({ error: 'Missing access token or tweet text.' });
   }
 
   try {
-    console.log('🔄 Refreshing token using refresh_token:', refresh_token.slice(0, 10) + '...');
+    console.log('✅ Using access token directly:', access_token.slice(0, 10) + '...');
 
-    // Step 1: Refresh access token
-    const tokenData = await getAccessTokenFromRefreshToken(refresh_token);
-    console.log('✅ Token data from refresh:', tokenData);
-
-    const access_token = tokenData.access_token;
-
-    if (!access_token) {
-      return res.status(401).json({ error: 'Failed to refresh token.', details: tokenData });
-    }
-
-    console.log('✅ Access token extracted:', access_token.slice(0, 10) + '...');
-
-    // Step 2: Post tweet
+    // Post tweet directly with access token
     const tweetResponse = await writeTweet(access_token, text);
     console.log('✅ Tweet response:', tweetResponse);
 
-    res.json({ message: "Tweet sent via refresh token.", tweetResponse });
+    res.json({ message: "Tweet sent successfully via access token.", tweetResponse });
 
   } catch (err) {
-    console.error('❌ Tweet via refresh token failed:', err.message);
-    res.status(500).json({ error: 'Tweet failed using refresh token.', details: err.message });
+    console.error('❌ Tweet failed:', err.message);
+    res.status(500).json({ error: 'Tweet failed using access token.', details: err.message });
   }
 });
 

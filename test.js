@@ -38,6 +38,7 @@ const fetch = require("node-fetch");
 
 
 
+
 // 1️⃣ Netlify site ID from .env (optional)
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
 
@@ -2128,6 +2129,168 @@ app.post("/edit-image", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+//nano banana pro->>>>>>>>>>>>>>>>>>>>
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// Middleware setup
+app.use(express.json({ limit: "10mb" }));
+app.use(morgan("dev"));
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Gemini client initialization
+
+
+/**
+ * Converts a Google Drive "view" URL to a direct download URL.
+ */
+function normalizeDriveUrl(url) {
+  const match = url.match(/\/file\/d\/([^/]+)\//);
+  if (match) {
+    return `https://drive.google.com/uc?export=download&id=${match[1]}`;
+  }
+  return url;
+}
+
+/**
+ * Uploads an image buffer to Cloudinary using an upload stream.
+ */
+async function uploadToCloudinary(buffer, filename) {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ public_id: filename, resource_type: "image" }, (err, result) => {
+        if (err) return reject(err);
+        resolve(result.secure_url);
+      })
+      .end(buffer);
+  });
+}
+
+/**
+ * POST /generate-image
+ * Endpoint for image generation using Nano Banana Pro.
+ * JSON: { prompt: string, aspectRatio?: string, imageSize?: string }
+ */
+app.post("/generate-image", async (req, res) => {
+  try {
+    const { prompt, aspectRatio, imageSize } = req.body;
+    
+    if (!prompt) return res.status(400).json({ error: "Missing prompt" });
+
+    // --- GENERATION CONFIGURATION FOR NANO BANANA PRO ---
+    const generationConfig = {
+      // Required to signal the model should produce an image
+      responseModalities: ["IMAGE", "TEXT"], 
+      imageConfig: {},
+    };
+
+    if (aspectRatio) {
+      generationConfig.imageConfig.aspectRatio = aspectRatio;
+    }
+    
+    if (imageSize) {
+      generationConfig.imageConfig.imageSize = imageSize; 
+    }
+    // --- END CONFIGURATION ---
+
+    const result = await genAI.models.generateContent({
+      model: "gemini-3-pro-image-preview",
+      contents: prompt,
+      config: generationConfig, 
+    });
+
+    const part = result.candidates?.[0]?.content?.parts?.find(
+      (p) => p.inlineData?.data
+    );
+    if (!part) {
+        console.error("Gemini response error:", JSON.stringify(result.candidates?.[0]?.content?.parts));
+        return res.status(500).json({ error: "No image returned, check console for API error/block." });
+    }
+
+    const buffer = Buffer.from(part.inlineData.data, "base64");
+    const filename = `gen_${Date.now()}`;
+
+    const url = await uploadToCloudinary(buffer, filename);
+
+    res.json({ 
+      message: "Image generated successfully with Nano Banana Pro", 
+      url, 
+      configUsed: generationConfig 
+    });
+  } catch (err) {
+    console.error("🔥 Error in /generate-image:", err.message);
+    res.status(500).json({ error: `Image generation failed: ${err.message}` });
+  }
+});
+
+/**
+ * POST /edit-image
+ * Endpoint for image editing using Nano Banana Pro.
+ * JSON: { prompt: string, image_url: string }
+ */
+app.post("/edit-image", async (req, res) => {
+  try {
+    let { prompt, image_url } = req.body;
+
+    if (!prompt || !image_url) {
+      return res.status(400).json({ error: "Missing prompt or image_url" });
+    }
+
+    image_url = normalizeDriveUrl(image_url);
+    
+    // Fetch external image
+    const response = await fetch(image_url);
+    if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+
+    const mimeType = response.headers.get("content-type");
+    if (!mimeType || !mimeType.startsWith("image/")) {
+      throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const base64 = buffer.toString("base64");
+
+    // Contents array includes the text prompt and the image for editing
+    const contents = [
+      { text: prompt },
+      { inlineData: { mimeType, data: base64 } },
+    ];
+
+    const result = await genAI.models.generateContent({
+      model: "gemini-3-pro-image-preview",
+      contents,
+    });
+
+    const part = result.candidates?.[0]?.content?.parts?.find(
+      (p) => p.inlineData?.data
+    );
+    if (!part) return res.status(500).json({ error: "No edited image returned." });
+
+    const editedBuffer = Buffer.from(part.inlineData.data, "base64");
+    const filename = `edit_${Date.now()}`;
+
+    const url = await uploadToCloudinary(editedBuffer, filename);
+
+    res.json({ message: "Image edited successfully with Nano Banana Pro", url });
+  } catch (err) {
+    console.error("🔥 Error in /edit-image:", err.message);
+    res.status(500).json({ error: `Image editing failed: ${err.message}` });
+  }
+});
+
+
+
+
+
+
 
 
 

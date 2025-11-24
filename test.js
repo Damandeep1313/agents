@@ -2078,57 +2078,65 @@ app.post("/generate-image", async (req, res) => {
  */
 app.post("/edit-image", async (req, res) => {
   try {
+    console.log("✅✅✅ DEBUG: RUNNING FIXED VERSION OF EDIT-IMAGE ✅✅✅"); // <--- LOOK FOR THIS LOG
     let { prompt, image_url } = req.body;
-    console.log("👉 Raw Edit request:", { prompt, image_url });
 
     if (!prompt || !image_url) {
       return res.status(400).json({ error: "Missing prompt or image_url" });
     }
 
-    // Normalize Google Drive URLs
     image_url = normalizeDriveUrl(image_url);
-    console.log("🔗 Normalized image_url:", image_url);
-
-    // Fetch image
+    
+    // Fetch external image
     const response = await fetch(image_url);
-    if (!response.ok) throw new Error("Failed to fetch image from URL");
+    if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
 
-    const mimeType = response.headers.get("content-type");
-    if (!mimeType.startsWith("image/")) {
-      throw new Error(`Unsupported MIME type: ${mimeType}`);
-    }
+    // --- FIX START ---
+    let mimeType = (response.headers.get("content-type") || "").toLowerCase();
+
+// Azure/GDrive return application/octet-stream → force to jpeg
+if (!mimeType.startsWith("image/")) {
+  console.log("⚠️ Forcing MIME type to image/jpeg (original was:", mimeType, ")");
+  mimeType = "image/jpeg";
+}
+
+    // --- FIX END ---
+
+    // if (!mimeType.startsWith("image/")) {
+    //   throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
+    // }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const base64 = buffer.toString("base64");
 
+    // Contents array includes the text prompt and the image for editing
     const contents = [
       { text: prompt },
       { inlineData: { mimeType, data: base64 } },
     ];
 
     const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash-image-preview",
+      model: "gemini-3-pro-image-preview",
       contents,
     });
 
     const part = result.candidates?.[0]?.content?.parts?.find(
       (p) => p.inlineData?.data
     );
-    if (!part) return res.status(500).json({ error: "No edited image returned" });
+    if (!part) return res.status(500).json({ error: "No edited image returned." });
 
     const editedBuffer = Buffer.from(part.inlineData.data, "base64");
     const filename = `edit_${Date.now()}`;
 
-    console.log("⚡ Uploading edited image to Cloudinary...");
     const url = await uploadToCloudinary(editedBuffer, filename);
 
-    console.log("✅ Edited image available at:", url);
-    res.json({ message: "Image edited", url });
+    res.json({ message: "Image edited successfully with Nano Banana Pro", url });
   } catch (err) {
-    console.error("🔥 Error:", err);
-    res.status(500).json({ error: err.message });
+    console.error("🔥 Error in /edit-image:", err.message);
+    res.status(500).json({ error: `Image editing failed: ${err.message}` });
   }
 });
+
 
 
 //nano banana pro->>>>>>>>>>>>>>>>>>>>
@@ -2179,7 +2187,7 @@ async function uploadToCloudinary(buffer, filename) {
  * Endpoint for image generation using Nano Banana Pro.
  * JSON: { prompt: string, aspectRatio?: string, imageSize?: string }
  */
-app.post("/generate-image", async (req, res) => {
+app.post("/generate-image2", async (req, res) => {
   try {
     const { prompt, aspectRatio, imageSize } = req.body;
     
@@ -2232,12 +2240,14 @@ app.post("/generate-image", async (req, res) => {
 });
 
 /**
+/**
  * POST /edit-image
  * Endpoint for image editing using Nano Banana Pro.
  * JSON: { prompt: string, image_url: string }
  */
-app.post("/edit-image", async (req, res) => {
+app.post("/edit-image2", async (req, res) => {
   try {
+    console.log("✅✅✅ DEBUG: RUNNING FIXED VERSION OF EDIT-IMAGE ✅✅✅"); // <--- LOOK FOR THIS LOG
     let { prompt, image_url } = req.body;
 
     if (!prompt || !image_url) {
@@ -2250,10 +2260,20 @@ app.post("/edit-image", async (req, res) => {
     const response = await fetch(image_url);
     if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
 
-    const mimeType = response.headers.get("content-type");
-    if (!mimeType || !mimeType.startsWith("image/")) {
-      throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
-    }
+    // --- FIX START ---
+    let mimeType = (response.headers.get("content-type") || "").toLowerCase();
+
+// Azure/GDrive return application/octet-stream → force to jpeg
+if (!mimeType.startsWith("image/")) {
+  console.log("⚠️ Forcing MIME type to image/jpeg (original was:", mimeType, ")");
+  mimeType = "image/jpeg";
+}
+
+    // --- FIX END ---
+
+    // if (!mimeType.startsWith("image/")) {
+    //   throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
+    // }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const base64 = buffer.toString("base64");

@@ -2245,68 +2245,146 @@ app.post("/generate-image2", async (req, res) => {
  * Endpoint for image editing using Nano Banana Pro.
  * JSON: { prompt: string, image_url: string }
  */
-app.post("/edit-image2", async (req, res) => {
-  try {
-    console.log("✅✅✅ DEBUG: RUNNING FIXED VERSION OF EDIT-IMAGE ✅✅✅"); // <--- LOOK FOR THIS LOG
-    let { prompt, image_url } = req.body;
+// app.post("/edit-image2", async (req, res) => {
+//   try {
+//     console.log("✅✅✅ DEBUG: RUNNING FIXED VERSION OF EDIT-IMAGE ✅✅✅"); // <--- LOOK FOR THIS LOG
+//     let { prompt, image_url } = req.body;
 
-    if (!prompt || !image_url) {
-      return res.status(400).json({ error: "Missing prompt or image_url" });
+//     if (!prompt || !image_url) {
+//       return res.status(400).json({ error: "Missing prompt or image_url" });
+//     }
+
+//     image_url = normalizeDriveUrl(image_url);
+    
+//     // Fetch external image
+//     const response = await fetch(image_url);
+//     if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+
+//     // --- FIX START ---
+//     let mimeType = (response.headers.get("content-type") || "").toLowerCase();
+
+// // Azure/GDrive return application/octet-stream → force to jpeg
+// if (!mimeType.startsWith("image/")) {
+//   console.log("⚠️ Forcing MIME type to image/jpeg (original was:", mimeType, ")");
+//   mimeType = "image/jpeg";
+// }
+
+//     // --- FIX END ---
+
+//     // if (!mimeType.startsWith("image/")) {
+//     //   throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
+//     // }
+
+//     const buffer = Buffer.from(await response.arrayBuffer());
+//     const base64 = buffer.toString("base64");
+
+//     // Contents array includes the text prompt and the image for editing
+//     const contents = [
+//       { text: prompt },
+//       { inlineData: { mimeType, data: base64 } },
+//     ];
+
+//     const result = await genAI.models.generateContent({
+//       model: "gemini-3-pro-image-preview",
+//       contents,
+//     });
+
+//     const part = result.candidates?.[0]?.content?.parts?.find(
+//       (p) => p.inlineData?.data
+//     );
+//     if (!part) return res.status(500).json({ error: "No edited image returned." });
+
+//     const editedBuffer = Buffer.from(part.inlineData.data, "base64");
+//     const filename = `edit_${Date.now()}`;
+
+//     const url = await uploadToCloudinary(editedBuffer, filename);
+
+//     res.json({ message: "Image edited successfully with Nano Banana Pro", url });
+//   } catch (err) {
+//     console.error("🔥 Error in /edit-image:", err.message);
+//     res.status(500).json({ error: `Image editing failed: ${err.message}` });
+//   }
+// });
+
+app.post("/edit-image-multi", async (req, res) => {
+  try {
+    console.log("✅✅✅ DEBUG: RUNNING MULTI-IMAGE VERSION OF EDIT-IMAGE ✅✅✅");
+
+    // 1. Get prompt and array of image URLs
+    let { prompt, image_urls } = req.body; // <--- CHANGED: Expects an array now
+
+    // 2. Input Validation
+    if (!prompt || !image_urls || !Array.isArray(image_urls) || image_urls.length === 0) {
+      return res.status(400).json({ 
+        error: "Missing prompt or image_urls (must be a non-empty array of URLs)" 
+      });
     }
 
-    image_url = normalizeDriveUrl(image_url);
+    // 3. Initialize contents array with the text prompt
+    const contents = [{ text: prompt }];
+
+    // 4. Process all image URLs
+    for (const url of image_urls) {
+      const normalizedUrl = normalizeDriveUrl(url);
+      
+      // Fetch external image
+      const response = await fetch(normalizedUrl);
+      if (!response.ok) {
+        console.warn(`⚠️ Failed to fetch image from URL: ${normalizedUrl}. Skipping.`);
+        continue; // Skip this image and move to the next one
+      }
+
+      let mimeType = (response.headers.get("content-type") || "").toLowerCase();
+
+      // Azure/GDrive return application/octet-stream → force to jpeg
+      if (!mimeType.startsWith("image/")) {
+        console.log("⚠️ Forcing MIME type to image/jpeg (original was:", mimeType, ")");
+        mimeType = "image/jpeg";
+      }
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const base64 = buffer.toString("base64");
+      
+      // Add the image to the contents array
+      contents.push({ 
+        inlineData: { 
+          mimeType, 
+          data: base64 
+        } 
+      });
+    }
     
-    // Fetch external image
-    const response = await fetch(image_url);
-    if (!response.ok) throw new Error(`Failed to fetch image from URL: ${response.statusText}`);
+    // 5. Ensure at least one image was successfully fetched
+    if (contents.length < 2) {
+      return res.status(400).json({ 
+        error: "Could not fetch any images from the provided URLs." 
+      });
+    }
 
-    // --- FIX START ---
-    let mimeType = (response.headers.get("content-type") || "").toLowerCase();
-
-// Azure/GDrive return application/octet-stream → force to jpeg
-if (!mimeType.startsWith("image/")) {
-  console.log("⚠️ Forcing MIME type to image/jpeg (original was:", mimeType, ")");
-  mimeType = "image/jpeg";
-}
-
-    // --- FIX END ---
-
-    // if (!mimeType.startsWith("image/")) {
-    //   throw new Error(`Unsupported MIME type: ${mimeType || 'Not found'}`);
-    // }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const base64 = buffer.toString("base64");
-
-    // Contents array includes the text prompt and the image for editing
-    const contents = [
-      { text: prompt },
-      { inlineData: { mimeType, data: base64 } },
-    ];
-
+    // 6. Call the Gemini API
     const result = await genAI.models.generateContent({
       model: "gemini-3-pro-image-preview",
-      contents,
+      contents, // This now contains the prompt + all fetched images
     });
 
+    // 7. Process the result and upload the edited image
     const part = result.candidates?.[0]?.content?.parts?.find(
       (p) => p.inlineData?.data
     );
     if (!part) return res.status(500).json({ error: "No edited image returned." });
 
     const editedBuffer = Buffer.from(part.inlineData.data, "base64");
-    const filename = `edit_${Date.now()}`;
+    const filename = `edit_multi_${Date.now()}`;
 
     const url = await uploadToCloudinary(editedBuffer, filename);
 
-    res.json({ message: "Image edited successfully with Nano Banana Pro", url });
+    res.json({ message: "Image edited successfully with Nano Banana Pro using multiple references", url });
+    
   } catch (err) {
-    console.error("🔥 Error in /edit-image:", err.message);
+    console.error("🔥 Error in /edit-image-multi:", err.message);
     res.status(500).json({ error: `Image editing failed: ${err.message}` });
   }
 });
-
-
 
 
 

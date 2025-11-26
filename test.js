@@ -2306,7 +2306,7 @@ app.post("/generate-image2", async (req, res) => {
 //   }
 // });
 
-app.post("/edit-image-multi", async (req, res) => {
+app.post("/edit-image2", async (req, res) => {
   try {
     console.log("✅✅✅ DEBUG: RUNNING MULTI-IMAGE VERSION OF EDIT-IMAGE ✅✅✅");
 
